@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Marka</title>
+<meta name="application-name" content="Marka">
+<meta name="apple-mobile-web-app-title" content="Marka">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#00a884">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  html,body{margin:0;height:100%;background:#fff;font-family:"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;color:#111b21}
+  #app{position:fixed;left:0;right:0;bottom:0;top:env(safe-area-inset-top,0);width:100%;height:calc(100% - env(safe-area-inset-top,0));border:0;display:block}
+  #splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#fff;z-index:5;transition:opacity .3s}
+  #splash img{width:96px;height:96px;border-radius:26px}
+  #splash b{font-size:24px;color:#00a884}
+  #splash span{font-size:13px;color:#667781}
+  .spin{width:26px;height:26px;border:3px solid #e9edef;border-top-color:#00a884;border-radius:50%;animation:r .8s linear infinite}
+  @keyframes r{to{transform:rotate(360deg)}}
+  #inst{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0));background:#111b21;color:#fff;border-radius:14px;padding:12px 14px;display:none;align-items:center;gap:12px;z-index:9;box-shadow:0 6px 20px rgba(0,0,0,.3);font-size:14px;line-height:1.35}
+  #inst img{width:40px;height:40px;border-radius:11px;flex:none}
+  #inst .t{flex:1}
+  #inst button{border:0;border-radius:18px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer}
+  #instOk{background:#00a884;color:#fff}
+  #instX{background:transparent;color:#aebac1;padding:8px!important}
+  #off{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#fff;z-index:8;text-align:center;padding:24px}
+  #off button{border:0;border-radius:22px;background:#00a884;color:#fff;padding:12px 26px;font:inherit;font-weight:600}
+</style>
+</head>
+<body>
+<div id="splash"><img src="icon-192.png" alt=""><b>Marka</b><div class="spin"></div><span>EPC · ELECTROTEL · SGEIM</span></div>
+<div id="off"><img src="icon-192.png" alt="" style="width:72px;border-radius:20px"><b style="font-size:20px">Sin conexión</b><span style="color:#667781">Revisa tus datos o wifi y vuelve a intentar.</span><button onclick="location.reload()">Reintentar</button></div>
+<iframe id="app" title="Marka" allow="camera; microphone; geolocation; clipboard-write"></iframe>
+
+<div id="inst">
+  <img src="icon-192.png" alt="">
+  <div class="t" id="instTxt">Instala Marka en tu celular para entrar directo.</div>
+  <button id="instOk">Instalar</button>
+  <button id="instX" aria-label="Cerrar">✕</button>
+</div>
+
+<script>
+/* ====== CONFIGURA AQUÍ: enlace /exec de tu Apps Script (Gestionar implementaciones → URL) ====== */
+const EXEC = 'https://script.google.com/macros/s/AKfycbyfxLs6NaL3NW0BASNma6uRl4x8lGZZ70zEGL8j6y2LK06klLljRqD48YHpV98BqXD_Gw/exec';
+/* ================================================================================================ */
+
+const LS = { get:k=>{try{return localStorage.getItem(k)}catch(e){return null}}, set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}, del:k=>{try{localStorage.removeItem(k)}catch(e){}} };
+const frame = document.getElementById('app');
+let token = LS.get('marka_token') || '';
+
+function cargar(){
+  if (!navigator.onLine){ document.getElementById('off').style.display = 'flex'; return; }
+  frame.src = EXEC + (token ? '?t=' + encodeURIComponent(token) : '');
+}
+frame.addEventListener('load', () => { const s = document.getElementById('splash'); s.style.opacity = 0; setTimeout(() => s.style.display = 'none', 300); });
+window.addEventListener('online', () => { document.getElementById('off').style.display = 'none'; if (!frame.src) cargar(); });
+
+/* Mensajes con la app de Apps Script: guarda / borra el acceso del trabajador */
+window.addEventListener('message', ev => {
+  if (!/\.googleusercontent\.com$|^https:\/\/script\.google\.com$/.test(ev.origin)) return;
+  const d = ev.data || {};
+  if (d.marka === 'hola') ev.source.postMessage({ marka:'portal', token }, '*');
+  else if (d.marka === 'token' && d.token && d.token !== token){ token = d.token; LS.set('marka_token', token); ofrecerInstalar(); }
+  else if (d.marka === 'logout'){ token = ''; LS.del('marka_token'); }
+});
+
+/* Instalar en pantalla de inicio */
+const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+let promptAndroid = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); promptAndroid = e; ofrecerInstalar(); });
+function ofrecerInstalar(){
+  if (standalone || LS.get('marka_inst_no')) return;
+  const box = document.getElementById('inst'), txt = document.getElementById('instTxt'), ok = document.getElementById('instOk');
+  if (promptAndroid){ txt.textContent = 'Instala Marka en tu celular para entrar directo a la foto.'; ok.style.display = ''; }
+  else if (ios){ txt.innerHTML = 'Para instalar: toca <b>Compartir</b> <span style="font-size:16px">⬆︎</span> y luego <b>Añadir a pantalla de inicio</b>.'; ok.style.display = 'none'; }
+  else return;
+  box.style.display = 'flex';
+}
+document.getElementById('instOk').onclick = async () => { if (!promptAndroid) return; promptAndroid.prompt(); await promptAndroid.userChoice; promptAndroid = null; document.getElementById('inst').style.display = 'none'; };
+document.getElementById('instX').onclick = () => { LS.set('marka_inst_no', '1'); document.getElementById('inst').style.display = 'none'; };
+if (ios && !standalone) setTimeout(ofrecerInstalar, 2500);
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+cargar();
+</script>
+</body>
+</html>
