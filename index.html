@@ -70,6 +70,13 @@ window.addEventListener('message', ev => {
   if (d.marka === 'hola') ev.source.postMessage({ marka:'portal', token }, '*');
   else if (d.marka === 'token' && d.token && d.token !== token){ token = d.token; LS.set('marka_token', token); ofrecerInstalar(); }
   else if (d.marka === 'logout'){ token = ''; LS.del('marka_token'); }
+  else if (d.marka === 'gps?'){            // la app pide el GPS: la portada lo obtiene (más confiable en iPhone)
+    const resp = m => { try { ev.source.postMessage(Object.assign({ marka:'gps' }, m), '*'); } catch(e){} };
+    if (!navigator.geolocation) return resp({ error:1 });
+    navigator.geolocation.getCurrentPosition(
+      p => resp({ lat:p.coords.latitude, lng:p.coords.longitude, acc:p.coords.accuracy }),
+      () => resp({ error:1 }), { enableHighAccuracy:true, timeout:10000, maximumAge:60000 });
+  }
 });
 
 /* Instalar en pantalla de inicio */
