@@ -1,5 +1,5 @@
 // Marka · service worker mínimo (permite instalar la app en Android).
-const CACHE = 'marka-v3';
+const CACHE = 'marka-v4';
 const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
